@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.api import auth
 
 # -----------------------------------------------------------------------------
 # Punto de entrada principal de la aplicación FastAPI
@@ -15,13 +16,17 @@ app = FastAPI(
     version="0.1.0"
 )
 
+
+# Routers
+# -----------------------------------------------------------------------------
+app.include_router(auth.router)
+
 # -----------------------------------------------------------------------------
 # Endpoint raíz de prueba
-# -----------------------------------------------------------------------------
 # Sirve para verificar rápidamente que:
-# - El servidor está levantado
-# - FastAPI responde correctamente
-# -----------------------------------------------------------------------------
+    # - El servidor está levantado
+    # - FastAPI responde correctamente
+
 @app.get("/")
 def root():
     return {
