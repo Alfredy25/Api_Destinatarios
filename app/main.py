@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api import auth
+from app.api import auth, registros
 
 # -----------------------------------------------------------------------------
 # Punto de entrada principal de la aplicación FastAPI
@@ -20,6 +20,7 @@ app = FastAPI(
 # Routers
 # -----------------------------------------------------------------------------
 app.include_router(auth.router)
+app.include_router(registros.router)
 
 # -----------------------------------------------------------------------------
 # Endpoint raíz de prueba
