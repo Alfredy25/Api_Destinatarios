@@ -1,5 +1,11 @@
 # Api_Destinatarios
 
+1. Crea un entorno virtual
+1. Seleccionar el intérprete en Cursor (clave para Run botón)
+    * Ctrl+Shift+P
+    * escribe: Python: Select Interpreter
+    * elige el que apunta a:
+    `...\Api_Destinatarios\.venv\Scripts\python.exe`
 1. al inicia ejecutar `python -m pip install --upgrade pip` o  `pip install --upgrade pip`
 
 1. instalar las siguientes librerias con pip install:
