@@ -31,10 +31,7 @@ router = APIRouter(
 # Endpoint protegido:
     # - Requiere JWT válido
     # - Asigna automáticamente created_by y updated_by
-@router.post(
-    "",
-    response_model=RegistroRead,
-)
+@router.post("",response_model=RegistroRead)
 def crear_registro_endpoint(
     data: RegistroCreate,
     db: Session = Depends(get_db),
@@ -50,7 +47,7 @@ def crear_registro_endpoint(
 # GET /registros - Consultar registros (FASE 10)
 @router.get("", response_model=List[RegistroRead])
 def obtener_registros(
-    sede: Optional[str] = Query(None, example="AJUSCO"),
+    sede: Optional[str] = Query(None, examples=["AJUSCO","COYOACAN"]),
     fecha_inicio: Optional[datetime] = Query(None),
     fecha_fin: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),

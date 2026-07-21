@@ -18,8 +18,7 @@ from app.models.user import User
 def crear_registro(
     db: Session,
     data: RegistroCreate,
-    usuario_actual: User,
-) -> RegistroDestinatario:
+    usuario_actual: User) -> RegistroDestinatario:
     registro = RegistroDestinatario(
         **data.model_dump(),
         created_by=usuario_actual.id,
@@ -40,8 +39,7 @@ def listar_registros(
     db: Session,
     sede: Optional[str] = None,
     fecha_inicio: Optional[datetime] = None,
-    fecha_fin: Optional[datetime] = None,
-) -> List[RegistroDestinatario]:
+    fecha_fin: Optional[datetime] = None) -> List[RegistroDestinatario]:
 
     query = db.query(RegistroDestinatario)
     filtros = []

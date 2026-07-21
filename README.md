@@ -37,4 +37,8 @@ y crear el usuario dev con su respectivo password
 1. verificar la conexión a la base de datos ejecutando el archivo app/db/database.py
 1. Ejecutar para generar las tablas `alembic upgrade head`
 2. Levantar el servidor con `uvicorn app.main:app --reload`
+1. Para crear usuarios hacerlo con `python -m scripts.create_user`
+    Y asegúrate de:
+        estar en la carpeta raíz del proyecto
+        tener el venv activado
 
