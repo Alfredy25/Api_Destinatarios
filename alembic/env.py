@@ -23,9 +23,10 @@ if config.config_file_name is not None:
 # Importar Base y modelos
 # IMPORTANTE: aquí se registran TODOS los modelos para Alembic
 # -------------------------------------------------
-from app.db.base import Base
-from app.models.user import User
-from app.models.registro import RegistroDestinatario
+from app.db.database import Base
+# IMPORTANTE: importar todos los modelos
+from app.entities.user import User
+from app.entities.registro import RegistroDestinatario
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -41,15 +42,10 @@ target_metadata = Base.metadata
 
 # Construir URL de conexión desde variables de entorno
 # -----------------------------------------------------------------------------
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
+DATABASE_URI = os.getenv("DATABASE_URI")
 
 DATABASE_URL = (
-    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}"
-    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URI
 )
 
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
