@@ -31,6 +31,9 @@ def create_user(user: UserRequest = Body(...), service: UserService = Depends(ge
                 current_user = Depends(get_current_user)):
 
     try:
+        if current_user.username != "alfredo":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin permisos para crear usuarios")
+
         return service.create(user)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

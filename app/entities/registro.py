@@ -32,10 +32,10 @@ class RegistroDestinatario(Base):
 
     observaciones_ia: Mapped[str | None] = mapped_column(String(100))
 
-    crop_x: Mapped[int] = mapped_column(Integer, nullable=True)
-    crop_y: Mapped[int] = mapped_column(Integer, nullable=True)
-    crop_w: Mapped[int] = mapped_column(Integer, nullable=True)
-    crop_h: Mapped[int] = mapped_column(Integer, nullable=True)
+    crop_x: Mapped[int] = mapped_column(Integer, nullable=False)
+    crop_y: Mapped[int] = mapped_column(Integer, nullable=False)
+    crop_w: Mapped[int] = mapped_column(Integer, nullable=False)
+    crop_h: Mapped[int] = mapped_column(Integer, nullable=False)
     rotation_deg: Mapped[int | None] = mapped_column(Integer)
 
     aspect_mode: Mapped[str] = mapped_column(Enum("FREE", "SQUARE", name="aspect_mode_enum"), nullable=False)

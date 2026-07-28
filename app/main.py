@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from app.routers import registros, auth, users
+from app.routers import registros, auth, users, coverages_px
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -26,6 +26,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(registros.router)
 app.include_router(users.router)
+app.include_router(coverages_px.router)
 
 @app.get("/")
 def root():

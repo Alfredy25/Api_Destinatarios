@@ -27,6 +27,7 @@ from app.db.database import Base
 # IMPORTANTE: importar todos los modelos
 from app.entities.user import User
 from app.entities.registro import RegistroDestinatario
+from app.entities.coverage_px import CoveragePX
 
 # add your model's MetaData object here
 # for 'autogenerate' support
