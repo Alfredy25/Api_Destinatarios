@@ -12,7 +12,7 @@ router = APIRouter(prefix="/coverages", tags=["coverages_px"])
 
 
 @router.get("/", response_model=List[CoveragePxDto])
-def lis_coverages_by_cp(postal_code: str = Query(..., alias="cp"),
+def list_coverages_by_cp(postal_code: str = Query(..., min_length=4, alias="cp", max_length=5),
         service: CoverageService = Depends(get_coverage_service),
                         current_user: User = Depends(get_current_user)):
 
