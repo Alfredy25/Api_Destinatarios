@@ -28,6 +28,7 @@ from app.db.database import Base
 from app.entities.user import User
 from app.entities.registro import RegistroDestinatario
 from app.entities.coverage_px import CoveragePX
+from app.entities.shipment_px import ShipmentPx
 
 # add your model's MetaData object here
 # for 'autogenerate' support

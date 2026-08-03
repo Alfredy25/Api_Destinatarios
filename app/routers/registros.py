@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, Query, Body, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Body, status
 from app.dependencies.di import get_register_service
 from app.dependencies.security import get_current_user
 from app.entities.user import User
