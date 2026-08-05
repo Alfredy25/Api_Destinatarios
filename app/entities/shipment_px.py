@@ -30,6 +30,7 @@ class ShipmentPx(Base):
     length: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable = False)
     width: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable = False)
     height: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable = False)
+    coverage_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
@@ -49,6 +50,7 @@ class ShipmentPx(Base):
             f"street={self.street!r}",
             f"num_street={self.num_street!r}",
             f"postal_code={self.postal_code!r}",
+            f"coverage_type={self.coverage_type!r}",
             f"email={self.email!r}",
             f"phone={self.phone!r}",
             f"address_reference={self.address_reference!r}",

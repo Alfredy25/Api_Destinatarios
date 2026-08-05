@@ -31,6 +31,7 @@ class ShippingDto(BaseModel):
     length: Decimal = Field(..., examples=["30.00"])
     width: Decimal = Field(..., examples=["20.00"])
     height: Decimal = Field(..., examples=["10.00"])
+    coverage_type: str = Field(default=None, examples=["PAQUETEXPRESS"])
 
     created_at: datetime
 

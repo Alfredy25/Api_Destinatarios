@@ -59,3 +59,5 @@ class ShippingRequest(BaseModel):
 
     height: Decimal = Field(..., gt=0, max_digits=8,
         decimal_places=2, examples=["10.00"])
+
+    coverage_type: str = Field(default=None, min_length=4, max_length=60)

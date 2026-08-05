@@ -67,6 +67,7 @@ class ShippingPxServiceImpl(ShippingPxService):
             length=shipping.length,
             width=shipping.width,
             height=shipping.height,
+            coverage_type=shipping.coverage_type,
             created_by=user.id
         )
 
