@@ -60,4 +60,5 @@ class ShippingRequest(BaseModel):
     height: Decimal = Field(..., gt=0, max_digits=8,
         decimal_places=2, examples=["10.00"])
 
-    coverage_type: str = Field(default=None, min_length=4, max_length=60)
+    coverage_type: str = Field(default=None, min_length=4, max_length=60, examples=["PAQUETEXPRESS"])
+    comments: str = Field(default=None, min_length=5, max_length=80, examples=["ENTREGAR EN UN HORARIO DE 09:00 A 14:00 HRS."])

@@ -31,6 +31,7 @@ class ShipmentPx(Base):
     width: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable = False)
     height: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable = False)
     coverage_type: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    comments: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     created_by: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)

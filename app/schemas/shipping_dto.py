@@ -31,8 +31,8 @@ class ShippingDto(BaseModel):
     length: Decimal = Field(..., examples=["30.00"])
     width: Decimal = Field(..., examples=["20.00"])
     height: Decimal = Field(..., examples=["10.00"])
-    coverage_type: str = Field(default=None, examples=["PAQUETEXPRESS"])
-
+    coverage_type: Optional[str] = Field(default=None, examples=["PAQUETEXPRESS"])
+    comments: Optional[str] = Field(default=None, examples=["ENTREGAR EN OFICIALIA DE PARTES O RECEPCION EN UN HORARIO DE 09:00 A 14:00 HRS."])
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
