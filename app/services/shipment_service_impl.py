@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.entities.shipment_px import ShipmentPx
 from app.entities.user import User
 from app.repositories.shipment_px_repository import ShipmentPxRepository
-from app.schemas.shipping_dto import ShippingDto
+from app.schemas.shipping_dto import ShippingDto, ShippingDtoUpdate
 from app.schemas.shipping_request import ShippingRequest
 from app.services.shipment_service import ShippingPxService
 
@@ -91,3 +91,23 @@ class ShippingPxServiceImpl(ShippingPxService):
                 detail="Envío no encontrado")
 
         return ShippingDto.model_validate(shipment_entity)
+
+    def update_shipping(self, shipping_id: int, shipping: ShippingDtoUpdate,
+                        user: User) -> ShippingDto:
+        shipping_entity = self._repo.find_by_id(shipping_id)
+
+        if not shipping_entity:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                                detail='Envio no encontrado')
+        update_data = shipping.model_dump(exclude_unset=True)
+
+        for attribute, valor in update_data.items():
+            setattr(shipping_entity, attribute, valor)
+
+        shipping_entity.created_by = user.id
+
+        self._db.commit()
+        self._db.refresh(shipping_entity)
+
+        return ShippingDto.model_validate(shipping_entity)
+
