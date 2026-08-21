@@ -1,9 +1,10 @@
 from fastapi import FastAPI, Request
+
+from app.middlewares.timing_middleware import timing_middleware
 from app.routers import registros, auth, users, coverages_px, shipments_px
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-
 
 app = FastAPI(
     title="OCR Destinatarios API",
@@ -28,6 +29,9 @@ app.include_router(registros.router)
 app.include_router(users.router)
 app.include_router(coverages_px.router)
 app.include_router(shipments_px.router)
+
+app.middleware('http')(timing_middleware)
+
 
 @app.get("/")
 def root():
