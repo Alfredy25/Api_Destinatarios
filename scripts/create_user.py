@@ -15,8 +15,8 @@ import getpass
 from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal
-from app.models.user import User
-from app.core.security import hash_password
+from app.entities.user import User
+from app.security.passwords import hash_password
 
 
 def create_user():
@@ -25,6 +25,7 @@ def create_user():
     username = input("Username: ").strip()
     password = getpass.getpass("Password: ")
     password_confirm = getpass.getpass("Confirmar password: ")
+    email = input("Email del usuario: ").strip()
 
     if password != password_confirm:
         print("Las contraseñas no coinciden")
@@ -42,6 +43,7 @@ def create_user():
         user = User(
             username=username,
             password_hash=hash_password(password),
+            email=email,
             is_active=True,
         )
 
