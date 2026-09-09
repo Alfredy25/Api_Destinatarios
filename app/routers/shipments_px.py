@@ -17,9 +17,10 @@ router = APIRouter(prefix="/shipments-px", tags=["shipments-px"])
 def get_shipments(fecha_inicio: Optional[datetime] = Query(default=None, description="Fecha inicial para filtrar envíos por fecha de creación"),
                   fecha_fin: Optional[datetime] = Query(default=None, description="Fecha final para filtrar envíos por fecha de creación"),
                   service: ShippingPxService = Depends(get_shipping_service),
-                  current_user: User = Depends(get_current_user)):
+                  current_user: User = Depends(get_current_user),
+                  my_shipments: bool = Query(False, description="My shipments user"),):
 
-    return service.list_shipments(fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
+    return service.list_shipments(fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, user_id= current_user.id if my_shipments else None)
 
 
 @router.post("/", response_model=ShippingDto, status_code=status.HTTP_201_CREATED)

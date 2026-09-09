@@ -19,7 +19,7 @@ class ShippingPxServiceImpl(ShippingPxService):
         self._db = db
 
     def list_shipments(self, fecha_inicio: Optional[datetime] = None,
-        fecha_fin: Optional[datetime] = None) -> List[ShippingDto]:
+        fecha_fin: Optional[datetime] = None, user_id: int = None) -> List[ShippingDto]:
 
         now = datetime.today()
 
@@ -40,7 +40,8 @@ class ShippingPxServiceImpl(ShippingPxService):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                                 detail="La fecha inicio no puede ser mayor que la fecha fin")
 
-        shipment_entities = self._repo.find_all(fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
+
+        shipment_entities = self._repo.find_all(fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, user_id=user_id if user_id else None)
 
         return [ShippingDto.model_validate(shipment)
             for shipment in shipment_entities]
@@ -58,7 +59,7 @@ class ShippingPxServiceImpl(ShippingPxService):
             num_street=shipping.num_street.upper(),
             postal_code=shipping.postal_code,
             email=str(shipping.email) if shipping.email else None,
-            phone=shipping.phone if shipping.phone else None,
+            phone=shipping.phone.upper() if shipping.phone else None,
             address_reference=shipping.address_reference.upper() if shipping.address_reference else None,
             quantity=shipping.quantity,
             package_code=shipping.package_code,
@@ -68,7 +69,7 @@ class ShippingPxServiceImpl(ShippingPxService):
             width=shipping.width,
             height=shipping.height,
             coverage_type=shipping.coverage_type,
-            comments=shipping.comments,
+            comments=shipping.comments.upper(),
             created_by=user.id
         )
 

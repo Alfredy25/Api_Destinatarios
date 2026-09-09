@@ -11,7 +11,7 @@ class ShippingPxService(ABC):
 
     @abstractmethod
     def list_shipments(self, fecha_inicio: Optional[datetime] = None,
-        fecha_fin: Optional[datetime] = None) -> List[ShippingDto]:
+        fecha_fin: Optional[datetime] = None, user_id: int = None) -> List[ShippingDto]:
         ...
 
     @abstractmethod

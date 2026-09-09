@@ -17,13 +17,16 @@ class SQLAlchemyShipmentPxRepository(ShipmentPxRepository):
         self._db = db
 
     def find_all(self, fecha_inicio: Optional[datetime] = None,
-                 fecha_fin: Optional[datetime] = None) -> List[ShipmentPx]:
+                 fecha_fin: Optional[datetime] = None, user_id: int = None) -> List[ShipmentPx]:
 
         stmt = select(ShipmentPx)
         if fecha_inicio:
             stmt = stmt.where(ShipmentPx.created_at >= fecha_inicio)
         if fecha_fin:
             stmt = stmt.where(ShipmentPx.created_at <= fecha_fin)
+
+        if user_id:
+            stmt = stmt.where(ShipmentPx.created_by == user_id)
 
         stmt = stmt.order_by(ShipmentPx.created_at.desc())
 

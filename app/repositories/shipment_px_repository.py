@@ -9,7 +9,7 @@ class ShipmentPxRepository(ABC):
 
     @abstractmethod
     def find_all(self, fecha_inicio: Optional[datetime] = None,
-                 fecha_fin: Optional[datetime] = None) -> List[ShipmentPx]:
+                 fecha_fin: Optional[datetime] = None, user_id: int = None) -> List[ShipmentPx]:
         ...
 
     @abstractmethod
