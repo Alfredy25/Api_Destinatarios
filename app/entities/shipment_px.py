@@ -24,7 +24,7 @@ class ShipmentPx(Base):
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     address_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    package_code: Mapped[int] = mapped_column(TINYINT(unsigned=True), nullable=False)
+    package_code: Mapped[int] = mapped_column(Integer, nullable=False) #TINYINT(unsigned=True) para mysql Integer para sqlite
     content: Mapped[str] = mapped_column(String(100), nullable=False)
     weight: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable = False)
     length: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable = False)
