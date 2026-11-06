@@ -1,8 +1,7 @@
 from decimal import Decimal
 from app.entities.user import User
 from sqlalchemy import Integer, String, Text, Numeric, ForeignKey, DateTime
-from sqlalchemy.dialects.mysql import TINYINT
-from app.db.database import Base
+from app.core.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from sqlalchemy.sql import func

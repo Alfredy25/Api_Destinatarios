@@ -11,12 +11,10 @@ IMPORTANTE:
 """
 
 import getpass
-
 from sqlalchemy.orm import Session
-
-from app.db.database import SessionLocal
+from app.core.db import SessionLocal
+from app.core.security import hash_password
 from app.entities.user import User
-from app.security.passwords import hash_password
 
 
 def create_user():

@@ -1,13 +1,12 @@
 from fastapi.testclient import TestClient
-from sqlalchemy import text
 from app.main import app
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.security.passwords import hash_password
-from app.db.database import Base
+from app.core.security import hash_password
+from app.core.db import Base
 from app.entities.user import User
-from app.dependencies.di import get_db
+from app.core.dependencies import get_db
 import time
 
 db_path = os.path.join(os.path.dirname(__file__), 'test.db')

@@ -4,7 +4,7 @@ from sqlalchemy import (Integer, String, Text,
                         Enum, DateTime, ForeignKey)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from app.db.database import Base
+from app.core.db import Base
 from app.entities.user import User
 
 class RegistroDestinatario(Base):

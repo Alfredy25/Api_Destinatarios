@@ -1,7 +1,13 @@
 from fastapi import FastAPI, Request
 
 from app.middlewares.timing_middleware import timing_middleware
-from app.routers import registros, auth, users, coverages_px, shipments_px
+
+from app.api.v1.coverage_px.router import router as coverage_px_router
+from app.api.v1.security.router import router as auth_router
+from app.api.v1.record.router import router as records_router
+from app.api.v1.user.router import router as users_router
+from app.api.v1.shipment.router import router as shipments_px_router
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -24,11 +30,11 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(auth.router)
-app.include_router(registros.router)
-app.include_router(users.router)
-app.include_router(coverages_px.router)
-app.include_router(shipments_px.router)
+app.include_router(auth_router)
+app.include_router(records_router)
+app.include_router(users_router)
+app.include_router(coverage_px_router)
+app.include_router(shipments_px_router)
 
 app.middleware('http')(timing_middleware)
 

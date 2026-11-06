@@ -1,5 +1,5 @@
-from app.db.database import Base
-from sqlalchemy import String, Enum, Index
+from app.core.db import Base
+from sqlalchemy import String, Enum
 from sqlalchemy.orm import Mapped, mapped_column
 
 class CoveragePX(Base):
