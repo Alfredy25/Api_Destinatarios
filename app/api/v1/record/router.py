@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query, Body, status
 from app.core.dependencies import get_register_service
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/registros", tags=["registros"])
 
 @router.get("/", response_model=List[RegistroDto])
 def get_registers(
-    sede: Optional[str] = Query(None, examples=["AJUSCO","COYOACAN"]),
+    sede: Optional[Literal["AJUSCO","COYOACAN"]] = Query(None, examples=["AJUSCO","COYOACAN"]),
     fecha_inicio: Optional[datetime] = Query(None),
     fecha_fin: Optional[datetime] = Query(None),
     service: RegistroService = Depends(get_register_service),
