@@ -7,6 +7,14 @@ from app.api.v1.security.router import router as auth_router
 from app.api.v1.record.router import router as records_router
 from app.api.v1.user.router import router as users_router
 from app.api.v1.shipment.router import router as shipments_px_router
+from app.api.v1.address.router import router as address_router
+from app.api.v1.contact.router import router as contact_router
+from app.api.v1.job_role.router import router as job_role_router
+from app.api.v1.organization.router import router as organization_router
+from app.api.v1.receiver.router import router as receiver_router
+from app.api.v1.title.router import router as title_router
+from app.api.v1.sepomex.router import router as sepomex_router
+from app.api.v1.volante.router import router as volante_router
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -35,6 +43,14 @@ app.include_router(records_router)
 app.include_router(users_router)
 app.include_router(coverage_px_router)
 app.include_router(shipments_px_router)
+app.include_router(receiver_router)
+app.include_router(address_router)
+app.include_router(contact_router)
+app.include_router(job_role_router)
+app.include_router(organization_router)
+app.include_router(title_router)
+app.include_router(volante_router)
+app.include_router(sepomex_router)
 
 app.middleware('http')(timing_middleware)
 

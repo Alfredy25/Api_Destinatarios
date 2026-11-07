@@ -25,10 +25,7 @@ if config.config_file_name is not None:
 # -------------------------------------------------
 from app.core.db import Base
 # IMPORTANTE: importar todos los modelos
-from app.entities.user import User
-from app.entities.registro import RegistroDestinatario
-from app.entities.coverage_px import CoveragePX
-from app.entities.shipment_px import ShipmentPx
+import app.entities
 
 # add your model's MetaData object here
 # for 'autogenerate' support

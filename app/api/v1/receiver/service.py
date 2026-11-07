@@ -1,0 +1,416 @@
+from typing import Literal
+
+from fastapi import HTTPException, status
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from app.api.v1.address.service import AddressService
+from app.api.v1.contact.service import ContactService
+from app.api.v1.job_role.schemas import JobCreate
+from app.api.v1.job_role.service import JobService
+from app.api.v1.organization.schemas import OrganizationCreate
+from app.api.v1.organization.service import OrganizationService
+from app.api.v1.position.schemas import PositionCreateWithReceiver
+from app.api.v1.position.service import PositionService
+from app.api.v1.receiver.repository import ReceiverRepository
+from app.api.v1.receiver.schemas import (
+    PaginatedReceiver,
+    ReceiverCreate,
+    ReceiverDto,
+    ReceiverUpdate,
+)
+from app.api.v1.title.service import TitleService
+from app.api.v1.volante.service import VolanteService
+from app.entities import EntidadesEnum, PositionORM, ReceiverORM, TitleORM
+
+# Cargos genéricos reutilizables por tipo de destinatario
+SIN_CARGO = JobCreate(
+    abbreviation="SIN CARGO",
+    meaning="Sin cargo especificado",
+)
+INSTITUCIONAL_GOBIERNO = JobCreate(
+    abbreviation="INSTITUCIONAL GOBIERNO",
+    meaning="Destinatario dirigido a institución gubernamental",
+)
+INSTITUCIONAL_PRIVADO = JobCreate(
+    abbreviation="INSTITUCIONAL PRIVADO",
+    meaning="Destinatario dirigido a institución privada",
+)
+
+
+class ReceiverService:
+
+    def __init__(self, db: Session, repo: ReceiverRepository,
+                 title_service: TitleService,
+                 job_service: JobService,
+                 org_service: OrganizationService,
+                 position_service: PositionService,
+                 volante_service: VolanteService,
+                 address_service: AddressService,
+                 contact_service: ContactService):
+        self._db = db
+        self._repo = repo
+        self._title_service = title_service
+        self._job_service = job_service
+        self._org_service = org_service
+        self._position_service = position_service
+        self._volante_service = volante_service
+        self._address_service = address_service
+        self._contact_service = contact_service
+
+    def create_receiver(self, payload: ReceiverCreate) -> ReceiverDto:
+        """Orquesta el alta completa de un destinatario en una sola transacción."""
+        try:
+            title_orm, position_orm = self._resolve_title_and_position(payload)
+            full_name = self._normalize_full_name(payload.full_name)
+            email = self._normalize_email(payload.email)
+
+            self._check_duplicate(
+                type_entity=payload.type_entity,
+                full_name=full_name,
+                title_id=title_orm.id if title_orm else None,
+                position_id=position_orm.id if position_orm else None,
+            )
+
+            # Crear destinatario si no hay duplicados
+            receiver_orm = self._repo.create(
+                type_entity=payload.type_entity, full_name=full_name,
+                email=email, title=title_orm, position=position_orm
+            )
+
+            # Dirección obligatoria
+            address_orm = self._address_service.create_address_with_receiver(
+                address_create=payload.address,
+            )
+            receiver_orm.addresses.append(address_orm)
+
+            # Contacto opcional
+            if payload.contact:
+                contact_orm = self._contact_service.create_contact_with_receiver(
+                    contact=payload.contact
+                )
+                receiver_orm.contacts.append(contact_orm)
+
+            # Volante opcional
+            if payload.volante:
+                volante_orm = self._volante_service.ensure_volante(
+                    volante=payload.volante,
+                )
+                receiver_orm.volantes.append(volante_orm)
+
+            self._db.commit()
+            self._db.refresh(receiver_orm)
+
+            return ReceiverDto.model_validate(receiver_orm, from_attributes=True)
+
+        except HTTPException:
+            self._db.rollback()
+            raise
+        except SQLAlchemyError:
+            self._db.rollback()
+            raise
+
+
+    def list_receivers(self,
+                       query: str | None,
+                       type_entity: EntidadesEnum | None = None,
+                       state: str | None = None,
+                       order_by: Literal["id", "full_name", "name_org", "created_at"] = "id",
+                       direction: Literal["asc", "desc"] = "asc",
+                       page: int = 1,
+                       page_size: int = 50,
+                       ) -> PaginatedReceiver:
+
+
+        search_n = query.strip().upper() if query else None
+        address_state_n = state.strip().upper() if state else None
+
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 50
+        if page_size > 100:
+            page_size = 100
+
+        dict_totals, items = self._repo.search(
+            search = search_n,
+            type_entity = type_entity,
+            state = address_state_n,
+            order_by = order_by,
+            direction = direction,
+            limit=page_size,
+            page=page,
+        )
+
+        current_page = dict_totals["current_page"]
+        total = dict_totals["total"]
+        total_pages = dict_totals["total_pages"]
+
+        has_prev = current_page > 1 and total > 0
+        has_next = current_page < total_pages if total_pages > 0 else False
+
+        return PaginatedReceiver(
+            page=current_page,
+            page_size=page_size,
+            total = total,
+            total_pages = total_pages,
+            has_prev = has_prev,
+            has_next = has_next,
+            order_by = order_by,
+            direction = direction,
+            search=search_n,
+            items=[
+                ReceiverDto.model_validate(receiver, from_attributes=True)
+                for receiver in items
+            ],
+        )
+
+    # ------------------------------------------------------------------
+    # Métodos internos
+    # ------------------------------------------------------------------
+
+    def _resolve_title_and_position(self, payload: ReceiverCreate)\
+            -> tuple[TitleORM | None, PositionORM | None]:
+        """Resuelve título y puesto según el tipo de destinatario."""
+        if payload.type_entity == EntidadesEnum.PERSONA:
+            return self._resolve_persona(payload)
+        return self._resolve_institution(payload)
+
+    def _resolve_persona(self, payload: ReceiverCreate)\
+            -> tuple[TitleORM, PositionORM | None]:
+        """PERSONA: título obligatorio, puesto según datos recibidos."""
+        title_orm = self._title_service.ensure_title(
+            title=payload.title,
+        )
+
+        if payload.position is None:
+            return title_orm, None
+
+        job_create = payload.position.job_role if payload.position.job_role else SIN_CARGO
+        position_orm = self._ensure_position_from_parts(
+            job_create=job_create,
+            org_create=payload.position.organization,
+        )
+        return title_orm, position_orm
+
+    def _resolve_institution(self, payload: ReceiverCreate
+    ) -> tuple[None, PositionORM]:
+        """GOBIERNO / PRIVADA: sin título, puesto obligatorio."""
+        if payload.position.job_role:
+            job_create = payload.position.job_role
+        elif payload.type_entity == EntidadesEnum.GOBIERNO:
+            job_create = INSTITUCIONAL_GOBIERNO
+        else:
+            job_create = INSTITUCIONAL_PRIVADO
+
+        position_orm = self._ensure_position_from_parts(
+            job_create=job_create,
+            org_create=payload.position.organization,
+        )
+        return None, position_orm
+
+    def _ensure_position_from_parts(self, job_create: JobCreate,
+                                    org_create: OrganizationCreate) -> PositionORM:
+        """Busca o crea cargo, organización y puesto."""
+        job_orm = self._job_service.ensure_job_role(job=job_create)
+        org_orm = self._org_service.ensure_organization(org_create=org_create)
+        return self._position_service.ensure_position(
+            job=job_orm, organization=org_orm,
+        )
+
+    def update_receiver(
+        self,
+        receiver_id: int,
+        payload: ReceiverUpdate,
+    ) -> ReceiverDto:
+        receiver = self._find_receiver(receiver_id)
+        try:
+            self._apply_update(receiver, payload)
+            self._db.commit()
+            self._db.refresh(receiver)
+            return ReceiverDto.model_validate(receiver, from_attributes=True)
+        except HTTPException:
+            self._db.rollback()
+            raise
+        except SQLAlchemyError:
+            self._db.rollback()
+            raise
+
+    def _find_receiver(self, receiver_id: int) -> ReceiverORM:
+        receiver = self._repo.find_by_id(receiver_id)
+        if receiver is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Destinatario con id {receiver_id} no existe",
+            )
+        return receiver
+
+    def _apply_update(self, receiver: ReceiverORM, payload: ReceiverUpdate) -> None:
+        fields = payload.model_fields_set
+        current_type = self._entity(receiver.type_entity)
+        target_type = self._target_type(current_type, payload, fields)
+        promoting = (
+            target_type == EntidadesEnum.PERSONA
+            and current_type != EntidadesEnum.PERSONA
+        )
+
+        if promoting:
+            self._require_persona_identity(fields)
+        if target_type != EntidadesEnum.PERSONA:
+            self._reject_persona_fields(fields)
+
+        if "email" in fields:
+            receiver.email = payload.email
+
+        if target_type == EntidadesEnum.PERSONA:
+            self._assign_persona_fields(receiver, payload, fields)
+        elif "position" in fields:
+            self._assign_institution_position(receiver, target_type, payload)
+
+        receiver.type_entity = target_type
+        self._check_duplicate(
+            type_entity=target_type,
+            full_name=receiver.full_name,
+            title_id=receiver.title.id if receiver.title else None,
+            position_id=receiver.position.id if receiver.position else None,
+            exclude_id=receiver.id,
+        )
+
+    def _target_type(
+        self,
+        current_type: EntidadesEnum,
+        payload: ReceiverUpdate,
+        fields: set[str],
+    ) -> EntidadesEnum:
+        if "type_entity" not in fields:
+            return current_type
+
+        requested = payload.type_entity
+        if requested == current_type:
+            return current_type
+        if (
+            requested == EntidadesEnum.PERSONA
+            and current_type != EntidadesEnum.PERSONA
+        ):
+            return EntidadesEnum.PERSONA
+        if current_type == EntidadesEnum.PERSONA:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Una persona no puede cambiar a GOBIERNO o PRIVADA",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No se puede cambiar entre GOBIERNO y PRIVADA",
+        )
+
+    @staticmethod
+    def _require_persona_identity(fields: set[str]) -> None:
+        if "full_name" in fields and "title" in fields:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Para pasar a PERSONA se requieren full_name y title",
+        )
+
+    @staticmethod
+    def _reject_persona_fields(fields: set[str]) -> None:
+        if "full_name" not in fields and "title" not in fields:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="full_name y title no son permitidos para GOBIERNO o PRIVADA",
+        )
+
+    def _assign_persona_fields(
+        self,
+        receiver: ReceiverORM,
+        payload: ReceiverUpdate,
+        fields: set[str],
+    ) -> None:
+        if "full_name" in fields:
+            receiver.full_name = payload.full_name
+        title = payload.title
+        if "title" in fields and title is not None:
+            receiver.title = self._title_service.ensure_title(title)
+        if "position" not in fields:
+            return
+        if payload.position is None:
+            receiver.position = None
+            return
+
+        job = payload.position.job_role or SIN_CARGO
+        receiver.position = self._ensure_position_from_parts(
+            job_create=job,
+            org_create=payload.position.organization,
+        )
+
+    def _assign_institution_position(
+        self,
+        receiver: ReceiverORM,
+        type_entity: EntidadesEnum,
+        payload: ReceiverUpdate,
+    ) -> None:
+        if payload.position is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El puesto es requerido para GOBIERNO o PRIVADA",
+            )
+        receiver.position = self._position_for_type(type_entity, payload.position)
+
+    def _position_for_type(
+        self,
+        type_entity: EntidadesEnum,
+        position: PositionCreateWithReceiver,
+    ) -> PositionORM:
+        if position.job_role:
+            job = position.job_role
+        elif type_entity == EntidadesEnum.GOBIERNO:
+            job = INSTITUCIONAL_GOBIERNO
+        else:
+            job = INSTITUCIONAL_PRIVADO
+        return self._ensure_position_from_parts(
+            job_create=job,
+            org_create=position.organization,
+        )
+
+    @staticmethod
+    def _entity(value: EntidadesEnum | str) -> EntidadesEnum:
+        if isinstance(value, EntidadesEnum):
+            return value
+        return EntidadesEnum(value)
+
+    def _check_duplicate(
+        self,
+        type_entity: EntidadesEnum,
+        full_name: str | None,
+        position_id: int | None,
+        title_id: int | None = None,
+        exclude_id: int | None = None,
+    ) -> None:
+        existing = self._repo.find_duplicate(
+            type_entity=type_entity,
+            full_name=full_name,
+            position_id=position_id,
+            title_id=title_id,
+            exclude_id=exclude_id,
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "msg": "El destinatario ya existe",
+                    "receiver_id": existing.id,
+                },
+            )
+
+    @staticmethod
+    def _normalize_full_name(full_name: str | None) -> str | None:
+        if full_name is None:
+            return None
+        return full_name.strip().upper()
+
+    @staticmethod
+    def _normalize_email(email: str | None) -> str | None:
+        if email is None:
+            return None
+        return str(email).strip().lower()
