@@ -53,8 +53,8 @@ class JobCreate(BaseModel):
 
 
 class JobUpdate(BaseModel):
-    abbreviation: Optional[str] = Field(default=None, min_length=2, max_length=60, pattern=r"^[A-Za-zñÑ. ]+$",)
-    meaning: Optional[str] = Field(default=None, min_length=3, max_length=150, pattern=r"^[A-Za-záéíóúÁÉÍÓÚñÑ ]+$",)
+    abbreviation: Optional[str] = Field(default=None, min_length=2, max_length=60, pattern=r"^[A-Za-zñÑ. ]+$",examples=["DIR. GRAL."])
+    meaning: Optional[str] = Field(default=None, min_length=3, max_length=150, pattern=r"^[A-Za-záéíóúÁÉÍÓÚñÑ ]+$", examples=["Director General"])
 
     @field_validator("abbreviation", mode="before")
     @classmethod
