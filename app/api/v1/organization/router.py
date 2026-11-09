@@ -12,7 +12,9 @@ from app.api.v1.organization.schemas import (
 )
 from app.api.v1.organization.service import OrganizationService
 from app.api.v1.receiver.schemas import normalize_search
+from app.api.v1.security.service import get_current_user
 from app.core.dependencies import get_organization_service
+from app.entities.user import User
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
@@ -57,6 +59,7 @@ def list_organizations(
         description="Dirección del orden",
     ),
     service: OrganizationService = Depends(get_organization_service),
+    current_user: User = Depends(get_current_user),
 ) -> PaginatedOrganizations:
     return service.list_organizations(
         search=search,
@@ -76,8 +79,9 @@ def list_organizations(
 def create_organization(
     organization: OrganizationCreate,
     service: OrganizationService = Depends(get_organization_service),
+    current_user: User = Depends(get_current_user),
 ) -> OrganizationDto:
-    return service.create_organization(organization)
+    return service.create_organization(organization, current_user)
 
 
 @router.patch("/{organization_id}", response_model=OrganizationDto)
@@ -93,8 +97,10 @@ def update_organization(
         description="Campos de la organización a actualizar",
     ),
     service: OrganizationService = Depends(get_organization_service),
+    current_user: User = Depends(get_current_user),
 ) -> OrganizationDto:
     return service.update_organization(
         organization_id=organization_id,
         organization=organization,
+        user=current_user,
     )

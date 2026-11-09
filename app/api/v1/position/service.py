@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 from app.api.v1.job_role.repository import JobRoleRepository
 from app.api.v1.organization.repository import OrganizationRepository
 from app.api.v1.position.repository import PositionRepository
-from app.api.v1.position.schemas import PositionCreate, PositionDto, JobDto, OrganizationDto
+from app.api.v1.position.schemas import PositionCreate, PositionDto
+from app.core.audit import stamp_new
 from app.entities import OrganizationORM, JobRoleORM, PositionORM
+from app.entities.user import User
 
 
 class PositionService:
@@ -19,7 +21,7 @@ class PositionService:
         self._repo_job = repo_job
         self._repo_org = repo_org
 
-    def create_position(self, position: PositionCreate) -> PositionDto:
+    def create_position(self, position: PositionCreate, user: User) -> PositionDto:
         job_orm = self._repo_job.find_by_abbreviation(
             position.job_role.abbreviation
         )
@@ -50,6 +52,7 @@ class PositionService:
             )
         try:
             position_orm_new = self._repo.create_position(job=job_orm, organization=organization_orm)
+            stamp_new(position_orm_new, user.id)
             self._db.commit()
             self._db.refresh(position_orm_new)
             return PositionDto.model_validate(position_orm_new, from_attributes=True)
@@ -58,11 +61,13 @@ class PositionService:
             raise
 
     def ensure_position(self, job: JobRoleORM,
-                               organization: OrganizationORM)-> PositionORM:
+                               organization: OrganizationORM,
+                               user: User) -> PositionORM:
         position_orm = self._repo.find_position(
             job_id=job.id, organization_id=organization.id
         )
         if position_orm:
             return position_orm
         position_orm_new = self._repo.create_position(job=job, organization=organization)
+        stamp_new(position_orm_new, user.id)
         return position_orm_new

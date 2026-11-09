@@ -13,7 +13,9 @@ from app.api.v1.address.schemas import (
     PaginatedAddresses,
     normalize_text,
 )
+from app.core.audit import ADDRESS_FIELDS, diff_updates, record_update, stamp_new
 from app.entities import AddressORM
+from app.entities.user import User
 
 _DUPLICATE_KEY_FIELDS = (
     "street",
@@ -36,6 +38,7 @@ class AddressService:
         self,
         receiver_id: int,
         address_create: AddressCreate,
+        user: User,
     ) -> AddressDto:
         self._require_receiver(receiver_id)
         self._reject_duplicate(
@@ -43,9 +46,9 @@ class AddressService:
             self._duplicate_key(address_create),
         )
 
-        created = self._repo.create(
-            self._to_address_orm(address_create, receiver_id)
-        )
+        address_orm = self._to_address_orm(address_create, receiver_id)
+        stamp_new(address_orm, user.id)
+        created = self._repo.create(address_orm)
         return self._commit(created)
 
     def _require_receiver(self, receiver_id: int) -> None:
@@ -171,6 +174,7 @@ class AddressService:
         self,
         address_update: AddressUpdate,
         address_id: int,
+        user: User,
     ) -> AddressDto:
         address = self._find_address(address_id)
 
@@ -180,7 +184,10 @@ class AddressService:
         )
         self._reject_duplicate_of_another(address, incoming_key)
 
+        updates = address_update.model_dump(exclude_unset=True, mode="json")
+        changes = diff_updates(address, updates, ADDRESS_FIELDS)
         updated = self._repo.update(address, address_update)
+        record_update(self._db, updated, user.id, changes)
         return self._commit(updated)
 
     def _find_address(self, address_id: int) -> AddressORM:
@@ -243,5 +250,8 @@ class AddressService:
     def create_address_with_receiver(
         self,
         address_create: AddressCreate,
+        user: User,
     ) -> AddressORM:
-        return self._to_address_orm(address_create)
+        address_orm = self._to_address_orm(address_create)
+        stamp_new(address_orm, user.id)
+        return address_orm

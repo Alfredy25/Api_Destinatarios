@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from app.core.db import Base
+from app.entities.auditable import AuditableMixin
 
 if TYPE_CHECKING:
     from app.entities import JobRoleORM
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     from app.entities import ReceiverORM
 
 
-class PositionORM(Base): # Puestos (Tabla Intermedia con Identidad)
+class PositionORM(AuditableMixin, Base): # Puestos (Tabla Intermedia con Identidad)
     __tablename__ = "positions"
     __table_args__ = (
         UniqueConstraint("job_id", "organization_id", name="uq_job_organization"),

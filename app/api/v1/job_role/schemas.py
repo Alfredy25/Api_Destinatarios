@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -19,6 +20,10 @@ class JobDto(BaseModel):
     id: int
     abbreviation: str
     meaning: str
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

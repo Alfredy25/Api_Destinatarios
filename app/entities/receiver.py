@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from datetime import datetime
 from enum import Enum as PyEnum
-from sqlalchemy import (Integer, String, Enum as SQLEnum, DateTime, func, ForeignKey,
+from sqlalchemy import (Integer, String, Enum as SQLEnum, ForeignKey,
                         UniqueConstraint, Table, Column)
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 
 from app.core.db import Base
+from app.entities.auditable import AuditableMixin
 
 if TYPE_CHECKING:
     from app.entities import PositionORM
@@ -30,7 +30,7 @@ receiver_volante = Table(
     UniqueConstraint("receiver_id", "volante_id", name="unique_receiver_id"),
 )
 
-class ReceiverORM(Base):
+class ReceiverORM(AuditableMixin, Base):
     __tablename__ = "receivers"
     __table_args__ = (
         UniqueConstraint("full_name", "title_id", "position_id", name="uq_receiver_name_position"),
@@ -40,7 +40,6 @@ class ReceiverORM(Base):
     type_entity: Mapped[str] = mapped_column(SQLEnum(EntidadesEnum, name="entidades_enum"), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(70), nullable=True)
     email: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     title_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("titles.id", ondelete="SET NULL"), nullable=True)
     position_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("positions.id", ondelete="SET NULL"), nullable=True)

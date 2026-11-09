@@ -1,4 +1,5 @@
 from enum import StrEnum
+from datetime import datetime
 from typing import Annotated, List, Literal, Optional
 import re
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
@@ -224,6 +225,10 @@ class AddressDto(BaseModel):
     country: str
     address_reference: Optional[str] = Field(default=None, max_length=50)
     receiver_id: int
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -6,7 +6,9 @@ from pydantic import AfterValidator
 from app.api.v1.job_role.schemas import JobCreate, JobDto, JobUpdate, PaginatedJobs
 from app.api.v1.job_role.service import JobService
 from app.api.v1.receiver.schemas import normalize_search
+from app.api.v1.security.service import get_current_user
 from app.core.dependencies import get_job_service
+from app.entities.user import User
 
 router = APIRouter(prefix="/job-roles", tags=["job-roles"])
 
@@ -47,6 +49,7 @@ def list_jobs(
         description="Dirección del orden",
     ),
     service: JobService = Depends(get_job_service),
+    current_user: User = Depends(get_current_user),
 ) -> PaginatedJobs:
     return service.get_jobs(
         search=search,
@@ -58,7 +61,8 @@ def list_jobs(
 
 @router.get("/{job_id}", response_model=JobDto)
 def get_job(job_id: int = Path(...,description="Identificador del cargo"),
-            service: JobService = Depends(get_job_service),):
+            service: JobService = Depends(get_job_service),
+            current_user: User = Depends(get_current_user)):
     return service.get_job(job_id = job_id)
 
 
@@ -66,8 +70,9 @@ def get_job(job_id: int = Path(...,description="Identificador del cargo"),
 def create_job(
     job: JobCreate,
     service: JobService = Depends(get_job_service),
+    current_user: User = Depends(get_current_user),
 ) -> JobDto:
-    return service.create_job(job)
+    return service.create_job(job, current_user)
 
 
 @router.patch("/{job_id}", response_model=JobDto)
@@ -80,5 +85,6 @@ def update_job(
     ),
     job: JobUpdate = Body(..., description="Campos del cargo a actualizar"),
     service: JobService = Depends(get_job_service),
+    current_user: User = Depends(get_current_user),
 ) -> JobDto:
-    return service.update_job(job_id=job_id, job=job)
+    return service.update_job(job_id=job_id, job=job, user=current_user)

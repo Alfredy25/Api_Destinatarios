@@ -2,8 +2,9 @@ from sqlalchemy import Integer, String
 from sqlalchemy.orm import mapped_column, Mapped
 
 from app.core.db import Base
+from app.entities.auditable import AuditableMixin
 
-class TitleORM(Base):
+class TitleORM(AuditableMixin, Base):
     __tablename__ = "titles"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, index=True)
     abbreviation: Mapped[str] = mapped_column(String(60), nullable=False, unique=True)

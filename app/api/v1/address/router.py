@@ -11,7 +11,9 @@ from app.api.v1.address.schemas import (
     PaginatedAddresses,
 )
 from app.api.v1.address.service import AddressService
+from app.api.v1.security.service import get_current_user
 from app.core.dependencies import get_address_service
+from app.entities.user import User
 
 router = APIRouter(prefix="/addresses", tags=["addresses"])
 
@@ -62,6 +64,7 @@ def list_addresses(
         description="Dirección del orden",
     ),
     service: AddressService = Depends(get_address_service),
+    current_user: User = Depends(get_current_user),
 ) -> PaginatedAddresses:
     return service.list_addresses(
         search=search,
@@ -83,10 +86,12 @@ def create_address(
     ),
     address: AddressCreate = Body(..., description="Domicilio a crear"),
     service: AddressService = Depends(get_address_service),
+    current_user: User = Depends(get_current_user),
 ) -> AddressDto:
     return service.create_address(
         receiver_id=receiver_id,
         address_create=address,
+        user=current_user,
     )
 
 
@@ -103,8 +108,10 @@ def update_address(
         description="Campos del domicilio a actualizar",
     ),
     service: AddressService = Depends(get_address_service),
+    current_user: User = Depends(get_current_user),
 ) -> AddressDto:
     return service.update_address(
         address_update=address,
         address_id=address_id,
+        user=current_user,
     )

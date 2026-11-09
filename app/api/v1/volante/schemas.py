@@ -1,4 +1,5 @@
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -6,6 +7,10 @@ from pydantic import BaseModel, Field, ConfigDict
 class VolanteDto(BaseModel):
     id: int
     name: str
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -4,7 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.volante.repository import VolanteRepository
 from app.api.v1.volante.schemas import VolanteDto, VolanteCreate, PaginatedVolantes, VolanteUpdate
+from app.core.audit import VOLANTE_FIELDS, diff_updates, record_update, stamp_new
 from app.entities import VolanteORM
+from app.entities.user import User
 
 
 class VolanteService:
@@ -46,7 +48,7 @@ class VolanteService:
             items=items
         )
 
-    def create_volante(self, volante: VolanteCreate) -> VolanteDto:
+    def create_volante(self, volante: VolanteCreate, user: User) -> VolanteDto:
         volante_orm = self._repo.get_by_name(volante.name.upper())
         if volante_orm:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Volante ya existe")
@@ -54,6 +56,7 @@ class VolanteService:
         volante.name = volante.name.strip().upper()
         try:
             volante_orm = self._repo.create(volante.name.upper())
+            stamp_new(volante_orm, user.id)
             self._db.commit()
             self._db.refresh(volante_orm)
             return VolanteDto.model_validate(volante_orm, from_attributes=True)
@@ -61,17 +64,19 @@ class VolanteService:
             self._db.rollback()
             raise
 
-    def update_volante(self, volante_id: int, volante: VolanteUpdate):
+    def update_volante(self, volante_id: int, volante: VolanteUpdate, user: User):
         volante_orm = self._repo.find_by_id(volante_id)
         if not volante_orm:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Volante no existe")
         updates = volante.model_dump()
         updates["name"] = updates.get("name").strip().upper()
         existing = self._repo.get_by_name(updates.get("name"))
-        if existing:
+        if existing and existing.id != volante_orm.id:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="name de volante ya existe")
         try:
+            changes = diff_updates(volante_orm, updates, VOLANTE_FIELDS)
             volante_orm = self._repo.update(volante_orm, updates)
+            record_update(self._db, volante_orm, user.id, changes)
             self._db.commit()
             self._db.refresh(volante_orm)
             return VolanteDto.model_validate(volante_orm, from_attributes=True)
@@ -79,12 +84,13 @@ class VolanteService:
             self._db.rollback()
             raise
 
-    def ensure_volante(self, volante: VolanteCreate) -> VolanteORM:
+    def ensure_volante(self, volante: VolanteCreate, user: User) -> VolanteORM:
         volante_orm = self._repo.get_by_name(volante.name.upper())
         if volante_orm:
             return volante_orm
 
         volante_orm_new = self._repo.create(volante.name.upper())
+        stamp_new(volante_orm_new, user.id)
         self._db.flush()
         return volante_orm_new
 

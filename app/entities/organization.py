@@ -3,12 +3,13 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Integer, String, UniqueConstraint
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from app.core.db import Base
+from app.entities.auditable import AuditableMixin
 
 if TYPE_CHECKING:
     from app.entities import PositionORM
 
 
-class OrganizationORM(Base): # dependencias
+class OrganizationORM(AuditableMixin, Base): # dependencias
     __tablename__ = "organizations"
     __table_args__ = (
         UniqueConstraint("name", "state", name="uq_state_name"),

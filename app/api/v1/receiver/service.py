@@ -21,7 +21,9 @@ from app.api.v1.receiver.schemas import (
 )
 from app.api.v1.title.service import TitleService
 from app.api.v1.volante.service import VolanteService
+from app.core.audit import diff_snapshots, jsonable, record_update, stamp_new
 from app.entities import EntidadesEnum, PositionORM, ReceiverORM, TitleORM
+from app.entities.user import User
 
 # Cargos genéricos reutilizables por tipo de destinatario
 SIN_CARGO = JobCreate(
@@ -58,10 +60,10 @@ class ReceiverService:
         self._address_service = address_service
         self._contact_service = contact_service
 
-    def create_receiver(self, payload: ReceiverCreate) -> ReceiverDto:
+    def create_receiver(self, payload: ReceiverCreate, user: User) -> ReceiverDto:
         """Orquesta el alta completa de un destinatario en una sola transacción."""
         try:
-            title_orm, position_orm = self._resolve_title_and_position(payload)
+            title_orm, position_orm = self._resolve_title_and_position(payload, user)
             full_name = self._normalize_full_name(payload.full_name)
             email = self._normalize_email(payload.email)
 
@@ -77,17 +79,20 @@ class ReceiverService:
                 type_entity=payload.type_entity, full_name=full_name,
                 email=email, title=title_orm, position=position_orm
             )
+            stamp_new(receiver_orm, user.id)
 
             # Dirección obligatoria
             address_orm = self._address_service.create_address_with_receiver(
                 address_create=payload.address,
+                user=user,
             )
             receiver_orm.addresses.append(address_orm)
 
             # Contacto opcional
             if payload.contact:
                 contact_orm = self._contact_service.create_contact_with_receiver(
-                    contact=payload.contact
+                    contact=payload.contact,
+                    user=user,
                 )
                 receiver_orm.contacts.append(contact_orm)
 
@@ -95,6 +100,7 @@ class ReceiverService:
             if payload.volante:
                 volante_orm = self._volante_service.ensure_volante(
                     volante=payload.volante,
+                    user=user,
                 )
                 receiver_orm.volantes.append(volante_orm)
 
@@ -169,18 +175,19 @@ class ReceiverService:
     # Métodos internos
     # ------------------------------------------------------------------
 
-    def _resolve_title_and_position(self, payload: ReceiverCreate)\
+    def _resolve_title_and_position(self, payload: ReceiverCreate, user: User)\
             -> tuple[TitleORM | None, PositionORM | None]:
         """Resuelve título y puesto según el tipo de destinatario."""
         if payload.type_entity == EntidadesEnum.PERSONA:
-            return self._resolve_persona(payload)
-        return self._resolve_institution(payload)
+            return self._resolve_persona(payload, user)
+        return self._resolve_institution(payload, user)
 
-    def _resolve_persona(self, payload: ReceiverCreate)\
+    def _resolve_persona(self, payload: ReceiverCreate, user: User)\
             -> tuple[TitleORM, PositionORM | None]:
         """PERSONA: título obligatorio, puesto según datos recibidos."""
         title_orm = self._title_service.ensure_title(
             title=payload.title,
+            user=user,
         )
 
         if payload.position is None:
@@ -190,10 +197,11 @@ class ReceiverService:
         position_orm = self._ensure_position_from_parts(
             job_create=job_create,
             org_create=payload.position.organization,
+            user=user,
         )
         return title_orm, position_orm
 
-    def _resolve_institution(self, payload: ReceiverCreate
+    def _resolve_institution(self, payload: ReceiverCreate, user: User
     ) -> tuple[None, PositionORM]:
         """GOBIERNO / PRIVADA: sin título, puesto obligatorio."""
         if payload.position.job_role:
@@ -206,26 +214,32 @@ class ReceiverService:
         position_orm = self._ensure_position_from_parts(
             job_create=job_create,
             org_create=payload.position.organization,
+            user=user,
         )
         return None, position_orm
 
     def _ensure_position_from_parts(self, job_create: JobCreate,
-                                    org_create: OrganizationCreate) -> PositionORM:
+                                    org_create: OrganizationCreate,
+                                    user: User) -> PositionORM:
         """Busca o crea cargo, organización y puesto."""
-        job_orm = self._job_service.ensure_job_role(job=job_create)
-        org_orm = self._org_service.ensure_organization(org_create=org_create)
+        job_orm = self._job_service.ensure_job_role(job=job_create, user=user)
+        org_orm = self._org_service.ensure_organization(org_create=org_create, user=user)
         return self._position_service.ensure_position(
-            job=job_orm, organization=org_orm,
+            job=job_orm, organization=org_orm, user=user,
         )
 
     def update_receiver(
         self,
         receiver_id: int,
         payload: ReceiverUpdate,
+        user: User,
     ) -> ReceiverDto:
         receiver = self._find_receiver(receiver_id)
         try:
-            self._apply_update(receiver, payload)
+            before = self._audit_snapshot(receiver)
+            self._apply_update(receiver, payload, user)
+            changes = diff_snapshots(before, self._audit_snapshot(receiver))
+            record_update(self._db, receiver, user.id, changes)
             self._db.commit()
             self._db.refresh(receiver)
             return ReceiverDto.model_validate(receiver, from_attributes=True)
@@ -236,6 +250,20 @@ class ReceiverService:
             self._db.rollback()
             raise
 
+    @staticmethod
+    def _audit_snapshot(receiver: ReceiverORM) -> dict:
+        """Lee los ids de título y puesto desde la relación.
+
+        La columna title_id / position_id se sincroniza hasta el flush.
+        """
+        return {
+            "full_name": receiver.full_name,
+            "email": jsonable(receiver.email),
+            "type_entity": jsonable(receiver.type_entity),
+            "title_id": receiver.title.id if receiver.title is not None else None,
+            "position_id": receiver.position.id if receiver.position is not None else None,
+        }
+
     def _find_receiver(self, receiver_id: int) -> ReceiverORM:
         receiver = self._repo.find_by_id(receiver_id)
         if receiver is None:
@@ -245,7 +273,7 @@ class ReceiverService:
             )
         return receiver
 
-    def _apply_update(self, receiver: ReceiverORM, payload: ReceiverUpdate) -> None:
+    def _apply_update(self, receiver: ReceiverORM, payload: ReceiverUpdate, user: User) -> None:
         fields = payload.model_fields_set
         current_type = self._entity(receiver.type_entity)
         target_type = self._target_type(current_type, payload, fields)
@@ -263,9 +291,9 @@ class ReceiverService:
             receiver.email = payload.email
 
         if target_type == EntidadesEnum.PERSONA:
-            self._assign_persona_fields(receiver, payload, fields)
+            self._assign_persona_fields(receiver, payload, fields, user)
         elif "position" in fields:
-            self._assign_institution_position(receiver, target_type, payload)
+            self._assign_institution_position(receiver, target_type, payload, user)
 
         receiver.type_entity = target_type
         self._check_duplicate(
@@ -326,12 +354,13 @@ class ReceiverService:
         receiver: ReceiverORM,
         payload: ReceiverUpdate,
         fields: set[str],
+        user: User,
     ) -> None:
         if "full_name" in fields:
             receiver.full_name = payload.full_name
         title = payload.title
         if "title" in fields and title is not None:
-            receiver.title = self._title_service.ensure_title(title)
+            receiver.title = self._title_service.ensure_title(title, user)
         if "position" not in fields:
             return
         if payload.position is None:
@@ -342,6 +371,7 @@ class ReceiverService:
         receiver.position = self._ensure_position_from_parts(
             job_create=job,
             org_create=payload.position.organization,
+            user=user,
         )
 
     def _assign_institution_position(
@@ -349,18 +379,20 @@ class ReceiverService:
         receiver: ReceiverORM,
         type_entity: EntidadesEnum,
         payload: ReceiverUpdate,
+        user: User,
     ) -> None:
         if payload.position is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="El puesto es requerido para GOBIERNO o PRIVADA",
             )
-        receiver.position = self._position_for_type(type_entity, payload.position)
+        receiver.position = self._position_for_type(type_entity, payload.position, user)
 
     def _position_for_type(
         self,
         type_entity: EntidadesEnum,
         position: PositionCreateWithReceiver,
+        user: User,
     ) -> PositionORM:
         if position.job_role:
             job = position.job_role
@@ -371,6 +403,7 @@ class ReceiverService:
         return self._ensure_position_from_parts(
             job_create=job,
             org_create=position.organization,
+            user=user,
         )
 
     @staticmethod

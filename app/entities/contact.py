@@ -2,11 +2,12 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Integer, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.db import Base
+from app.entities.auditable import AuditableMixin
 
 if TYPE_CHECKING:
     from app.entities import ReceiverORM
 
-class ContactORM(Base):
+class ContactORM(AuditableMixin, Base):
     __tablename__ = "contacts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

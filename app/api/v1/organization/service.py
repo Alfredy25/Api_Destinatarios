@@ -12,7 +12,9 @@ from app.api.v1.organization.schemas import (
     OrganizationUpdate,
     PaginatedOrganizations,
 )
+from app.core.audit import ORGANIZATION_FIELDS, diff_updates, record_update, stamp_new
 from app.entities import OrganizationORM
+from app.entities.user import User
 
 
 class OrganizationService:
@@ -24,6 +26,7 @@ class OrganizationService:
     def create_organization(
         self,
         organization: OrganizationCreate,
+        user: User,
     ) -> OrganizationDto:
         existing = self._repo.find_organization(
             name=organization.name,
@@ -39,6 +42,7 @@ class OrganizationService:
             name=organization.name,
             state=organization.state,
         )
+        stamp_new(created, user.id)
         return self._commit(created)
 
     def list_organizations(
@@ -89,12 +93,15 @@ class OrganizationService:
         self,
         organization_id: int,
         organization: OrganizationUpdate,
+        user: User,
     ) -> OrganizationDto:
         current = self._find_organization(organization_id)
         updates = organization.model_dump(exclude_unset=True, mode="json")
         self._reject_same_name_in_state(current, updates)
 
+        changes = diff_updates(current, updates, ORGANIZATION_FIELDS)
         updated = self._repo.update(current, updates)
+        record_update(self._db, updated, user.id, changes)
         return self._commit(updated)
 
     def _find_organization(self, organization_id: int) -> OrganizationORM:
@@ -136,6 +143,7 @@ class OrganizationService:
     def ensure_organization(
         self,
         org_create: OrganizationCreate,
+        user: User,
     ) -> OrganizationORM:
         org_orm = self._repo.find_organization(
             name=org_create.name,
@@ -144,7 +152,9 @@ class OrganizationService:
         if org_orm:
             return org_orm
 
-        return self._repo.create_organization(
+        created = self._repo.create_organization(
             name=org_create.name,
             state=org_create.state,
         )
+        stamp_new(created, user.id)
+        return created

@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from app.core.db import Base
+from app.entities.auditable import AuditableMixin
 from sqlalchemy import Integer, String
 
 if TYPE_CHECKING:
     from app.entities import ReceiverORM
 
 
-class VolanteORM(Base):
+class VolanteORM(AuditableMixin, Base):
     __tablename__ = 'volantes'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, nullable=False)

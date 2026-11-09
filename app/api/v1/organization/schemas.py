@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -50,6 +51,10 @@ class OrganizationDto(BaseModel):
     id: int
     name: str
     state: MexicanStateField
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

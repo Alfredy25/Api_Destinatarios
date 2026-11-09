@@ -3,12 +3,12 @@ from sqlalchemy import Integer, String, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
+from app.entities.auditable import AuditableMixin
 if TYPE_CHECKING:
     from app.entities import ReceiverORM
 
 
-
-class AddressORM(Base):
+class AddressORM(AuditableMixin, Base):
     __tablename__ = "addresses"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -32,4 +32,3 @@ class AddressORM(Base):
         "ReceiverORM",
         back_populates="addresses",
     )
-

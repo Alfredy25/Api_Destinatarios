@@ -4,8 +4,10 @@ from typing import List, Optional, Annotated, Literal
 from pydantic import AfterValidator
 
 from app.api.v1.receiver.schemas import normalize_search
+from app.api.v1.security.service import get_current_user
 from app.api.v1.title.schemas import TitleDto, TitleCreate, TitleUpdate, PaginatedTitles
 from app.core.dependencies import get_title_service
+from app.entities.user import User
 
 router = APIRouter(prefix="/titles", tags=["titles"])
 
@@ -39,20 +41,28 @@ def list_titles(
             description="Order column"
         ),
         direction: Literal["desc", "asc"] = Query(default="asc", description="Direction of order"),
-        service_title = Depends(get_title_service)):
+        service_title = Depends(get_title_service),
+        current_user: User = Depends(get_current_user)):
     return service_title.get_titles(
         search=search, page = page, limit=page_size, order_by=order_by,
         direction=direction
     )
 
 @router.post("/", response_model=TitleDto, status_code=status.HTTP_201_CREATED)
-def create_title(title: TitleCreate, service_title = Depends(get_title_service)):
+def create_title(title: TitleCreate, service_title = Depends(get_title_service),
+                 current_user: User = Depends(get_current_user)):
     return service_title.create_title(
         abbreviation = title.abbreviation,
         meaning = title.meaning,
+        user=current_user,
     )
 
 @router.patch("/{title_id}", response_model=TitleDto)
 def update_title(title_id: int, title: TitleUpdate,
-                 service_title = Depends(get_title_service)):
-    return service_title.update_title(title_id=title_id, title_update=title)
+                 service_title = Depends(get_title_service),
+                 current_user: User = Depends(get_current_user)):
+    return service_title.update_title(
+        title_id=title_id,
+        title_update=title,
+        user=current_user,
+    )

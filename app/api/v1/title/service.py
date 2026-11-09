@@ -5,7 +5,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.api.v1.title.repository import TitleRepository
 from app.api.v1.title.schemas import TitleDto, TitleUpdate, TitleCreate, PaginatedTitles
+from app.core.audit import TITLE_FIELDS, diff_updates, record_update, stamp_new
 from app.entities import TitleORM
+from app.entities.user import User
 
 
 class TitleService:
@@ -13,7 +15,7 @@ class TitleService:
         self._db = db
         self._repo = repo
 
-    def create_title(self, abbreviation: str, meaning: str) -> TitleDto:
+    def create_title(self, abbreviation: str, meaning: str, user: User) -> TitleDto:
         title_orm = self._repo.get_by_abbreviation(abbreviation)
 
         if title_orm:
@@ -23,6 +25,7 @@ class TitleService:
             )
         try:
             title_orm = TitleORM(abbreviation=abbreviation, meaning=meaning)
+            stamp_new(title_orm, user.id)
             self._repo.create(title_orm)
             self._db.commit()
             self._db.refresh(title_orm)
@@ -72,7 +75,7 @@ class TitleService:
             ]
         )
 
-    def update_title(self, title_id, title_update: TitleUpdate) -> TitleDto:
+    def update_title(self, title_id, title_update: TitleUpdate, user: User) -> TitleDto:
         title = self._repo.find_by_id(title_id)
         if not title:
             raise HTTPException(
@@ -81,7 +84,9 @@ class TitleService:
             )
         try:
             updates = title_update.model_dump(exclude_unset=True)
+            changes = diff_updates(title, updates, TITLE_FIELDS)
             title_orm = self._repo.update(title, updates)
+            record_update(self._db, title_orm, user.id, changes)
             self._db.commit()
             self._db.refresh(title_orm)
             return TitleDto.model_validate(title_orm, from_attributes=True)
@@ -89,12 +94,13 @@ class TitleService:
             self._db.rollback()
             raise
 
-    def ensure_title(self, title: TitleCreate) -> TitleORM:
+    def ensure_title(self, title: TitleCreate, user: User) -> TitleORM:
         title_orm = self._repo.get_by_abbreviation(title.abbreviation)
         if title_orm:
             return title_orm
 
         new_title_orm = TitleORM(abbreviation=title.abbreviation, meaning=title.meaning)
+        stamp_new(new_title_orm, user.id)
         title_orm = self._repo.create(new_title_orm)
         self._db.flush()
         return title_orm

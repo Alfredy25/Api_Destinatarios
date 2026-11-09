@@ -3,13 +3,14 @@ from typing import TYPE_CHECKING
 from sqlalchemy import Integer, String
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from app.core.db import Base
+from app.entities.auditable import AuditableMixin
 
 if TYPE_CHECKING:
     from app.entities import PositionORM
 
 
 
-class JobRoleORM(Base): # Cargos
+class JobRoleORM(AuditableMixin, Base): # Cargos
     __tablename__ = "job_roles"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     abbreviation: Mapped[str] = mapped_column(String(60), nullable=False, unique=True)

@@ -11,7 +11,9 @@ from app.api.v1.receiver.schemas import (
     normalize_search,
 )
 from app.api.v1.receiver.service import ReceiverService
+from app.api.v1.security.service import get_current_user
 from app.core.dependencies import get_receiver_service
+from app.entities.user import User
 
 router = APIRouter(prefix="/receivers", tags=["receivers"])
 
@@ -19,9 +21,10 @@ router = APIRouter(prefix="/receivers", tags=["receivers"])
 @router.post("/", response_model=ReceiverDto,
              status_code=status.HTTP_201_CREATED,summary="Crear destinatario")
 def create_receiver(payload: ReceiverCreate,
-                    service: ReceiverService = Depends(get_receiver_service)) -> ReceiverDto:
+                    service: ReceiverService = Depends(get_receiver_service),
+                    current_user: User = Depends(get_current_user)) -> ReceiverDto:
     """Crea un destinatario con su dirección, contacto y volante opcionales."""
-    return service.create_receiver(payload)
+    return service.create_receiver(payload, current_user)
 
 @router.get("/", response_model= PaginatedReceiver)
 def list_receivers(
@@ -57,7 +60,8 @@ def list_receivers(
         state: Optional[str] = Query(
             default=None,
             description="Estado de la republica mexicana para address"),
-        service: ReceiverService = Depends(get_receiver_service)
+        service: ReceiverService = Depends(get_receiver_service),
+        current_user: User = Depends(get_current_user),
 ) -> PaginatedReceiver:
     return service.list_receivers(
         query=query,
@@ -83,5 +87,6 @@ def update_receiver(
         description="Campos del destinatario a actualizar",
     ),
     service: ReceiverService = Depends(get_receiver_service),
+    current_user: User = Depends(get_current_user),
 ) -> ReceiverDto:
-    return service.update_receiver(receiver_id, payload)
+    return service.update_receiver(receiver_id, payload, current_user)

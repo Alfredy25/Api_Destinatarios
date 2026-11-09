@@ -10,7 +10,9 @@ from app.api.v1.contact.schemas import (
     PaginatedContacts,
 )
 from app.api.v1.contact.service import ContactService
+from app.api.v1.security.service import get_current_user
 from app.core.dependencies import get_contact_service
+from app.entities.user import User
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
@@ -57,6 +59,7 @@ def list_contacts(
         description="Dirección del orden",
     ),
     service: ContactService = Depends(get_contact_service),
+    current_user: User = Depends(get_current_user),
 ) -> PaginatedContacts:
     return service.list_contacts(
         search=search,
@@ -81,10 +84,12 @@ def create_contact(
     ),
     contact: ContactCreate = Body(..., description="Contacto a crear"),
     service: ContactService = Depends(get_contact_service),
+    current_user: User = Depends(get_current_user),
 ) -> ContactDto:
     return service.create_contact(
         receiver_id=receiver_id,
         contact=contact,
+        user=current_user,
     )
 
 
@@ -101,8 +106,10 @@ def update_contact(
         description="Campos del contacto a actualizar",
     ),
     service: ContactService = Depends(get_contact_service),
+    current_user: User = Depends(get_current_user),
 ) -> ContactDto:
     return service.update_contact(
         contact_id=contact_id,
         contact=contact,
+        user=current_user,
     )

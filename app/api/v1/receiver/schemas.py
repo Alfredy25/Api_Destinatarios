@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional, Self, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
@@ -21,6 +22,10 @@ class ReceiverDto(BaseModel):
     addresses: List[AddressDto] = Field(default_factory=list)
     contacts: List[ContactDto] = Field(default_factory=list)
     volantes: List[VolanteDto] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

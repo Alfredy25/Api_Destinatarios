@@ -11,7 +11,9 @@ from app.api.v1.contact.schemas import (
     ContactUpdate,
     PaginatedContacts,
 )
+from app.core.audit import CONTACT_FIELDS, diff_updates, record_update, stamp_new
 from app.entities import ContactORM
+from app.entities.user import User
 
 
 class ContactService:
@@ -24,6 +26,7 @@ class ContactService:
         self,
         receiver_id: int,
         contact: ContactCreate,
+        user: User,
     ) -> ContactDto:
         self._require_receiver(receiver_id)
         self._reject_duplicate(
@@ -31,9 +34,9 @@ class ContactService:
             self._duplicate_key(contact.phone, contact.ext),
         )
 
-        created = self._repo.create(
-            self._to_contact_orm(contact, receiver_id)
-        )
+        contact_orm = self._to_contact_orm(contact, receiver_id)
+        stamp_new(contact_orm, user.id)
+        created = self._repo.create(contact_orm)
         return self._commit(created)
 
     def _require_receiver(self, receiver_id: int) -> None:
@@ -138,14 +141,17 @@ class ContactService:
         )
 
     def update_contact(
-        self, contact_id: int, contact: ContactUpdate
+        self, contact_id: int, contact: ContactUpdate, user: User
     ) -> ContactDto:
 
         current = self._find_contact(contact_id)
         incoming_key = self._duplicate_key_after_update(current, contact)
         self._reject_duplicate_of_another(current, incoming_key)
 
+        updates = contact.model_dump(exclude_unset=True)
+        changes = diff_updates(current, updates, CONTACT_FIELDS)
         updated = self._repo.update(current, contact)
+        record_update(self._db, updated, user.id, changes)
         return self._commit(updated)
 
     def _find_contact(self, contact_id: int) -> ContactORM:
@@ -195,9 +201,10 @@ class ContactService:
         if other_duplicates:
             self._raise_duplicate(other_duplicates[0].id)
 
-    def create_contact_with_receiver(self, contact: ContactCreate) -> ContactORM:
+    def create_contact_with_receiver(self, contact: ContactCreate, user: User) -> ContactORM:
         contact_orm = ContactORM(
             phone=contact.phone,
             ext=contact.ext if contact.ext else None
         )
+        stamp_new(contact_orm, user.id)
         return contact_orm

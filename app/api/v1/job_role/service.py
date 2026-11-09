@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.job_role.repository import JobRoleRepository
 from app.api.v1.job_role.schemas import JobCreate, JobDto, JobUpdate, PaginatedJobs
+from app.core.audit import JOB_FIELDS, diff_updates, record_update, stamp_new
 from app.entities import JobRoleORM
+from app.entities.user import User
 
 
 class JobService:
@@ -14,7 +16,7 @@ class JobService:
         self._db = db
         self._repo = repo
 
-    def create_job(self, job: JobCreate) -> JobDto:
+    def create_job(self, job: JobCreate, user: User) -> JobDto:
         existing = self._repo.find_by_abbreviation(job.abbreviation)
         if existing is not None:
             raise HTTPException(
@@ -26,6 +28,7 @@ class JobService:
                 abbreviation=job.abbreviation,
                 meaning=job.meaning,
             )
+            stamp_new(job_orm_new, user.id)
             self._db.commit()
             self._db.refresh(job_orm_new)
             return JobDto.model_validate(job_orm_new, from_attributes=True)
@@ -71,7 +74,7 @@ class JobService:
             ],
         )
 
-    def update_job(self, job_id: int, job: JobUpdate) -> JobDto:
+    def update_job(self, job_id: int, job: JobUpdate, user: User) -> JobDto:
         job_orm = self._repo.get_by_id(job_id=job_id)
         if job_orm is None:
             raise HTTPException(
@@ -81,7 +84,9 @@ class JobService:
         updates = job.model_dump(exclude_unset=True)
         self._reject_abbreviation_of_another(job_orm, updates)
         try:
+            changes = diff_updates(job_orm, updates, JOB_FIELDS)
             job_orm_update = self._repo.update(job_orm, updates=updates)
+            record_update(self._db, job_orm_update, user.id, changes)
             self._db.commit()
             self._db.refresh(job_orm_update)
             return JobDto.model_validate(job_orm_update, from_attributes=True)
@@ -108,7 +113,7 @@ class JobService:
                 detail="El cargo ya existe",
             )
 
-    def ensure_job_role(self, job: JobCreate) -> JobRoleORM:
+    def ensure_job_role(self, job: JobCreate, user: User) -> JobRoleORM:
         job_orm = self._repo.find_by_abbreviation(job.abbreviation)
         if job_orm:
             return job_orm
@@ -116,6 +121,7 @@ class JobService:
             abbreviation=job.abbreviation,
             meaning=job.meaning,
         )
+        stamp_new(job_orm_new, user.id)
         return job_orm_new
 
     def get_job(self, job_id: int) -> JobDto:

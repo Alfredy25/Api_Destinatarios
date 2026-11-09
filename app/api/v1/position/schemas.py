@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
 from app.api.v1.job_role.schemas import JobDto, JobCreate, JobUpdate
@@ -8,6 +9,10 @@ class PositionDto(BaseModel):
     id: int
     job_role: JobDto
     organization: OrganizationDto
+    created_at: datetime
+    updated_at: datetime
+    created_by: Optional[int] = None
+    updated_by: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
