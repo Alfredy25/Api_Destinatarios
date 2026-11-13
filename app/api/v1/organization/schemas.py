@@ -9,13 +9,16 @@ from app.api.v1.address.schemas import MexicanState, MexicanStateField, replace_
 NAME_ABBREVIATIONS = {
     "UNIVERSIDAD": "UNI.",
     "AUTONOMA": "AUT.",
-    "SECRETARIA DE ADMINISTRACION TRIBUTARIA": "S.A.T.",
+    "SERVICIO DE ADMINISTRACION TRIBUTARIA": "S.A.T.",
     "SECRETARIA DE CONTRALORIA GENERAL": "S.C.E.",
     "ORGANO INTERNO DE CONTROL": "O.I.C.",
     "ORGANO DE CONTROL INTERNO": "O.I.C.",
     "CONTRALORIA GENERAL DEL ESTADO": "C.G.E.",
     "BAJA CALIFORNIA SUR": "B.C.S.",
     "SAN LUIS POTOSI": "S.L.P.",
+    "ESTADO": "EDO",
+    "ADMINISTRACION": "ADMON.",
+    "SECRETARÍA": "SECRET.A",
 }
 
 def replace_whole_words(value: str) -> str:

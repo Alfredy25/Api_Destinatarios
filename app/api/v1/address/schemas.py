@@ -19,11 +19,9 @@ STREET_ABBREVIATIONS = {
     "AVENIDA": "AV.",
     "BOULEVARD": "BLVD.",
     "CARRETERA": "CARR.",
-    "SIN NÚMERO": "SN.",
     "SIN NUMERO": "SN.",
     "S/N": "SN",
     "NUMERO": "NUM.",
-    "NÚMERO": "NUM.",
     "EDIFICIO": "EDIF.",
     "KILOMETRO": "KM.",
 }

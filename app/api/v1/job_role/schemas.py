@@ -1,12 +1,72 @@
 from datetime import datetime
 from typing import List, Literal, Optional
-
+import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from app.api.v1.address.schemas import replace_special_characters
+
+
+NAME_ABBREVIATIONS = {
+    "ADMINISTRADORA DESCONCENTRADA DE RECAUDACION": "ADM. DESC. DE REC.",
+    "ADMINISTRADOR DESCONCENTRADA DE RECAUDACION": "ADM. DESC. DE REC.",
+    "BAJA CALIFORNIA SUR": "B.C.S.",
+    "SAN LUIS POTOSI": "S.L.P.",
+    "ESTADO": "EDO",
+    "ADMINISTRADORA": "ADMIN.",
+    "ADMINISTRADOR": "ADMIN.",
+    "ADMINISTRACION": "ADMON.",
+    "PRESIDENTA": "PDTA.",
+    "PRESIDENTE": "PDTE.",
+    "DIRECTORA": "DIR.A",
+    "DIRECTOR": "DIR.",
+    "SECRETARIA": "SECRET.A",
+    "SECRETARIO": "SEC.",
+    "GOBERNADOR": "GOB.",
+    "UNIVERSIDAD": "UNI",
+    "AUTONOMA": "AUT.",
+    "MAESTRA": "MTRA.",
+    "MAESTRO": "MTRO.",
+    "PROFESORA": "PROFA.",
+    "PROFESOR": "PROF.",
+    "DIPUTADA": "DIP.",
+    "DIPUTADO": "DIP.",
+    "SENADORA": "SEN.",
+    "SENADOR": "SEN.",
+    "DOCTORA": "DRA.",
+    "DOCTOR": "DR.",
+    "TITULAR": "TIT.",
+    "GENERAL": "GRAL.",
+}
+
+
+def replace_whole_words(value: str) -> str:
+    words = sorted(
+        NAME_ABBREVIATIONS,
+        key=len,
+        reverse=True,
+    )
+
+    regex = r"\b(?:{})\b".format(
+        "|".join(
+            re.escape(word)
+            for word in words
+        )
+    )
+
+    pattern = re.compile(regex)
+
+    text = pattern.sub(
+        lambda match: NAME_ABBREVIATIONS[match.group(0)],
+        value
+    )
+
+    return replace_special_characters(text)
+
+
 
 
 def normalize_abbreviation(value: object) -> object:
     if isinstance(value, str):
-        return value.strip().upper()
+        return replace_whole_words(value.strip().upper()) 
     return value
 
 
@@ -35,7 +95,7 @@ class JobCreate(BaseModel):
         max_length=60,
         examples=["DIR."],
         description="Abreviatura del cargo",
-        pattern=r"^[A-Za-zñÑ. ]+$",
+        pattern=r"^[A-Za-záéíóúÁÉÍÓÚñÑ0-9. ]+$",
     )
     meaning: str = Field(
         ...,
@@ -43,7 +103,7 @@ class JobCreate(BaseModel):
         max_length=150,
         examples=["Director"],
         description="Significado de la abreviatura",
-        pattern=r"^[A-Za-záéíóúÁÉÍÓÚñÑ ]+$",
+        pattern=r"^[A-Za-záéíóúÁÉÍÓÚñÑ0-9 ]+$",
     )
 
     @field_validator("abbreviation", mode="before")

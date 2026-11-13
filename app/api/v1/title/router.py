@@ -20,7 +20,7 @@ def list_titles(
                     default=None,
                     maxlength=60,
                     min_length=2,
-                    pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚ. ]+$",
+                    pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ. ]+$",
                     description="Search titles by abbreviation and meaning",
                     examples=["ABG.","Abogado","Doctor","GOB."]
                 ),

@@ -15,11 +15,11 @@ class TitleDto(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class TitleCreate(BaseModel):
-    abbreviation: str = Field(..., min_length=3, max_length=60,  examples=["DR."],description="Title abbreviation")
+    abbreviation: str = Field(..., min_length=2, max_length=60,  examples=["DR."],description="Title abbreviation")
     meaning: str = Field(..., min_length=3, max_length=150, examples=["Doctor"],description="Meaning from title abbreviation")  # Significado
 
 class TitleUpdate(BaseModel):
-    abbreviation: Optional[str] = Field(default=None, max_length=60)
+    abbreviation: Optional[str] = Field(default=None,min_length=2, max_length=60)
     meaning: Optional[str] = Field(default=None, max_length=150)
 
 class PaginatedTitles(BaseModel):
