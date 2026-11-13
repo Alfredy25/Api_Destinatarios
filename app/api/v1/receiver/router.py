@@ -10,6 +10,7 @@ from app.api.v1.receiver.schemas import (
     ReceiverUpdate,
     normalize_search,
 )
+from app.api.v1.volante.schemas import VolanteCreate, VolanteDto
 from app.api.v1.receiver.service import ReceiverService
 from app.api.v1.security.service import get_current_user
 from app.core.dependencies import get_receiver_service
@@ -25,6 +26,28 @@ def create_receiver(payload: ReceiverCreate,
                     current_user: User = Depends(get_current_user)) -> ReceiverDto:
     """Crea un destinatario con su dirección, contacto y volante opcionales."""
     return service.create_receiver(payload, current_user)
+
+
+@router.post(
+    "/{receiver_id}/volantes",
+    response_model=VolanteDto,
+    status_code=status.HTTP_201_CREATED,
+    summary="Añadir volante a un destinatario",
+)
+def add_receiver_volante(
+    receiver_id: int = Path(
+        ...,
+        ge=1,
+        description="Destinatario al que se añade el volante",
+        examples=[1],
+    ),
+    payload: VolanteCreate = Body(..., description="Nombre del volante"),
+    service: ReceiverService = Depends(get_receiver_service),
+    current_user: User = Depends(get_current_user),
+) -> VolanteDto:
+    """Crea o reutiliza el volante y lo enlaza. No modifica el resto del destinatario."""
+    return service.add_volante(receiver_id, payload, current_user)
+
 
 @router.get("/", response_model= PaginatedReceiver)
 def list_receivers(

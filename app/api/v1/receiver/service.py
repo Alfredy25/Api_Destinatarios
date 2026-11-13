@@ -20,6 +20,7 @@ from app.api.v1.receiver.schemas import (
     ReceiverUpdate,
 )
 from app.api.v1.title.service import TitleService
+from app.api.v1.volante.schemas import VolanteCreate, VolanteDto
 from app.api.v1.volante.service import VolanteService
 from app.core.audit import diff_snapshots, jsonable, record_update, stamp_new
 from app.entities import EntidadesEnum, PositionORM, ReceiverORM, TitleORM
@@ -227,6 +228,35 @@ class ReceiverService:
         return self._position_service.ensure_position(
             job=job_orm, organization=org_orm, user=user,
         )
+
+    def add_volante(
+        self,
+        receiver_id: int,
+        payload: VolanteCreate,
+        user: User,
+    ) -> VolanteDto:
+        """Enlaza un volante al destinatario. Si el nombre ya existe, lo reutiliza."""
+        receiver = self._find_receiver(receiver_id)
+        try:
+            volante_orm = self._volante_service.ensure_volante(payload, user)
+            if any(item.id == volante_orm.id for item in receiver.volantes):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={
+                        "msg": "El destinatario ya tiene ese volante",
+                        "volante_id": volante_orm.id,
+                    },
+                )
+            receiver.volantes.append(volante_orm)
+            self._db.commit()
+            self._db.refresh(volante_orm)
+            return VolanteDto.model_validate(volante_orm, from_attributes=True)
+        except HTTPException:
+            self._db.rollback()
+            raise
+        except SQLAlchemyError:
+            self._db.rollback()
+            raise
 
     def update_receiver(
         self,
