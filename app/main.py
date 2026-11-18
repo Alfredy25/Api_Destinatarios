@@ -52,6 +52,7 @@ app.include_router(title_router)
 app.include_router(volante_router)
 app.include_router(sepomex_router)
 
+# Middleware
 app.middleware('http')(timing_middleware)
 
 

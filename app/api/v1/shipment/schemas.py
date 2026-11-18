@@ -1,7 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict, EmailStr, field_validator
+from app.api.v1.utils.helpers import normalize_email, normalize_name_receiver_shipment, normalize_phone, normalize_address, normalize_campos_shipments
 
 
 class ShippingDto(BaseModel):
@@ -125,3 +126,39 @@ class ShippingRequest(BaseModel):
 
     coverage_type: str = Field(default=None, min_length=4, max_length=60, examples=["PAQUETEXPRESS"])
     comments: str = Field(default=None, min_length=5, max_length=80, examples=["ENTREGAR EN UN HORARIO DE 09:00 A 14:00 HRS."])
+
+    @field_validator("name_receiver", mode="before")
+    @classmethod
+    def normalize_shipment_name(cls, value: object) -> object:
+        if isinstance(value, str):
+            return normalize_name_receiver_shipment(value)
+        return value 
+    
+    @field_validator("phone", mode="before")
+    @classmethod
+    def normalize_shipment_phone(cls, value: object):
+        if isinstance(value, str):
+            return normalize_phone(value)
+        return value
+    
+    @field_validator("street", mode="before")
+    @classmethod
+    def normalize_shipment_street(cls, value: object):
+        if isinstance(value, str):
+            return normalize_address(value)
+        return value
+    
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email_shipment(cls, value: object):
+        if isinstance(value, str):
+            return normalize_email(value)
+        
+        return value
+
+    @field_validator("country", "state", "city", "colony", mode="after")
+    @classmethod
+    def normalize_fields_shipment(cls, value: object):
+        if isinstance(value, str):
+            return normalize_campos_shipments(value) 
+        return value

@@ -11,7 +11,7 @@ from app.api.v1.address.schemas import (
     AddressUpdate,
     MexicanState,
     PaginatedAddresses,
-    normalize_text,
+    normalize_text
 )
 from app.core.audit import ADDRESS_FIELDS, diff_updates, record_update, stamp_new
 from app.entities import AddressORM

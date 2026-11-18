@@ -2,11 +2,11 @@ from datetime import datetime
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-
+from app.api.v1.utils.helpers import normalize_phone, clean_base_text
 
 def strip_phone(value: object) -> object:
     if isinstance(value, str):
-        return value.strip()
+        return normalize_phone(value)
     return value
 
 
@@ -14,8 +14,7 @@ def strip_ext(value: object) -> object:
     if value is None:
         return None
     if isinstance(value, str):
-        stripped = value.strip()
-        return stripped or None
+        return clean_base_text(value, drop_parens=True, drop_slash=True)
     return value
 
 

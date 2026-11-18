@@ -1,87 +1,15 @@
 from enum import StrEnum
 from datetime import datetime
 from typing import Annotated, List, Literal, Optional
-import re
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
+from app.api.v1.utils.helpers import normalize_state, normalize_address, _VOWEL_ACCENTS
 
-# La Ñ se conserva porque es una letra, no un acento.
-_VOWEL_ACCENTS = str.maketrans({
-    "Á": "A",
-    "É": "E",
-    "Í": "I",
-    "Ó": "O",
-    "Ú": "U",
-    "Ü": "U",
-})
-
-STREET_ABBREVIATIONS = {
-    "CALLE": "C.",
-    "AVENIDA": "AV.",
-    "BOULEVARD": "BLVD.",
-    "CARRETERA": "CARR.",
-    "SIN NUMERO": "SN.",
-    "S/N": "SN",
-    "NUMERO": "NUM.",
-    "EDIFICIO": "EDIF.",
-    "KILOMETRO": "KM.",
-}
-
-special_characters = {
-    "\\": "",
-    ":": "",
-    "[": "",
-    "]": "",
-    "#": "",
-    "°": "",
-    "-": " ",
-    '"': "",
-    ",": "",
-    "!": "",
-    "¿": "",
-    "¡": "",
-    "“": "",
-    "”": "",
-}
-
-def replace_special_characters(text: str) -> str:
-    for key, value in special_characters.items():
-        text = text.replace(key, value)
-    return text
-
-def normalize_text(value: str) -> str:
-    return value.strip().upper().translate(_VOWEL_ACCENTS)
 
 def normalize_text_fields(value: str | None) -> str:
     return value.strip().upper()
 
-def replace_whole_words(value: str) -> str:
-    words = sorted(
-        STREET_ABBREVIATIONS,
-        key=len,
-        reverse=True,
-    )
-
-    regex = r"\b(?:{})\b".format(
-        "|".join(
-            re.escape(word)
-            for word in words
-        )
-    )
-
-    pattern = re.compile(regex)
-
-    text = pattern.sub(
-        lambda match: STREET_ABBREVIATIONS[match.group(0)],
-        value
-    )
-
-    return replace_special_characters(text)
-
-def normalize_state(value: object) -> object:
-    if isinstance(value, str):
-        return normalize_text(value)
-    return value
-
+def normalize_text(value: str) -> str:
+    return value.strip().upper().translate(_VOWEL_ACCENTS)
 
 class MexicanState(StrEnum):
     AGUASCALIENTES = "AGUASCALIENTES"
@@ -158,9 +86,12 @@ class AddressUpdate(BaseModel):
         mode="before",
     )
     @classmethod
-    def normalize_address(cls, value):
-        value = normalize_text_fields(value)
-        return replace_whole_words(value)
+    def normalize_street_num(cls, value):
+        if value is None:
+            return None
+        
+        if isinstance(value, str):
+            return normalize_address(value)
 
 
 class AddressCreate(BaseModel):
@@ -200,12 +131,13 @@ class AddressCreate(BaseModel):
         mode="before",
     )
     @classmethod
-    def normalize_address(cls, value) -> str | None:
+    def normalize_street_num(cls, value) -> str | None:
         if value is None:
             return None
-        value = normalize_text_fields(value)
-        return replace_whole_words(value)
 
+        if isinstance(value, str):
+            return normalize_address(value)
+            
 
 class AddressDto(BaseModel):
     id: int

@@ -4,49 +4,14 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.api.v1.address.schemas import MexicanState, MexicanStateField, replace_special_characters
+from app.api.v1.address.schemas import MexicanState, MexicanStateField
+from app.api.v1.utils.helpers import normalize_organization
 
-NAME_ABBREVIATIONS = {
-    "UNIVERSIDAD": "UNI.",
-    "AUTONOMA": "AUT.",
-    "SERVICIO DE ADMINISTRACION TRIBUTARIA": "S.A.T.",
-    "SECRETARIA DE CONTRALORIA GENERAL": "S.C.E.",
-    "ORGANO INTERNO DE CONTROL": "O.I.C.",
-    "ORGANO DE CONTROL INTERNO": "O.I.C.",
-    "CONTRALORIA GENERAL DEL ESTADO": "C.G.E.",
-    "BAJA CALIFORNIA SUR": "B.C.S.",
-    "SAN LUIS POTOSI": "S.L.P.",
-    "ESTADO": "EDO",
-    "ADMINISTRACION": "ADMON.",
-    "SECRETARÍA": "SECRET.A",
-}
 
-def replace_whole_words(value: str) -> str:
-    words = sorted(
-        NAME_ABBREVIATIONS,
-        key=len,
-        reverse=True,
-    )
-
-    regex = r"\b(?:{})\b".format(
-        "|".join(
-            re.escape(word)
-            for word in words
-        )
-    )
-
-    pattern = re.compile(regex)
-
-    text = pattern.sub(
-        lambda match: NAME_ABBREVIATIONS[match.group(0)],
-        value
-    )
-
-    return replace_special_characters(text)
 
 def normalize_organization_name(value: object) -> object:
     if isinstance(value, str):
-        return replace_whole_words(value.strip().upper())
+        return normalize_organization(value)
     return value
 
 

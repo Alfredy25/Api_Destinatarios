@@ -29,11 +29,11 @@ from app.entities.user import User
 # Cargos genéricos reutilizables por tipo de destinatario
 SIN_CARGO = JobCreate(
     abbreviation="SIN CARGO",
-    meaning="Sin cargo especificado",
+    meaning="SIN CARGO ESPECIFICADO",
 )
 INSTITUCIONAL_GOBIERNO = JobCreate(
     abbreviation="INSTITUCIONAL GOBIERNO",
-    meaning="Destinatario dirigido a institución gubernamental",
+    meaning="DESTINATARIO DIRIGIDO A INSTITUCION GUBERNAMENTAL",
 )
 INSTITUCIONAL_PRIVADO = JobCreate(
     abbreviation="INSTITUCIONAL PRIVADO",
