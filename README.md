@@ -5,8 +5,13 @@ Backend REST (FastAPI) para el sistema extractor OCR de destinatarios. Expone au
 ## Requisitos
 
 - Python 3.11+
+- Python 3.12 recomendado para producción
 - MySQL 8
 - Git
+
+El despliegue de producción se valida con Python 3.12. Si desarrollas con una
+versión más nueva (por ejemplo, Python 3.14), prueba las dependencias y el
+arranque también con Python 3.12 antes de desplegar.
 
 ## 1. Entorno virtual
 

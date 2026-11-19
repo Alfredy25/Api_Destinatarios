@@ -25,7 +25,8 @@ Rutas en el VPS:
 | Qué | Ruta |
 | --- | --- |
 | Proyecto | `/home/freido/apps/fastapi-backend/Api_Destinatarios` |
-| Entorno virtual | `/home/freido/apps/venvs/fastapi-backend` |
+| Entorno virtual | `/home/freido/apps/venvs/fastapi-backend-py312` |
+| Entorno anterior (rollback temporal) | `/home/freido/apps/venvs/fastapi-backend` |
 | Servicio systemd | `/etc/systemd/system/fastapi-backend.service` |
 | `.env` de producción | `/home/freido/apps/fastapi-backend/Api_Destinatarios/.env` |
 
@@ -39,6 +40,120 @@ No hace falta: `apt update`, crear el venv, clonar de cero, instalar NGINX, conf
 2. Hay migraciones nuevas (`coverages_px`, `shipments_px`, `email` en `users`, etc.).
 3. El login es por `email`, no por `username`.
 4. **No subir el `.env` local a GitHub** (credenciales de desarrollo).
+
+---
+
+## Migración única del runtime a Python 3.12
+
+Ubuntu 22.04 usa Python 3.10 para herramientas del sistema. No reemplaces
+`/usr/bin/python3`, no cambies `update-alternatives` y no borres el entorno
+anterior. Python 3.12 se instala en paralelo desde Deadsnakes.
+
+Con el servicio detenido, guarda primero la configuración efectiva:
+
+```bash
+sudo systemctl stop fastapi-backend
+sudo systemctl cat fastapi-backend | tee ~/fastapi-backend.service.before-py312.txt
+systemctl is-active fastapi-backend
+```
+
+El último comando debe responder `inactive`.
+
+Instala Python 3.12 sin modificar el Python del sistema:
+
+```bash
+sudo apt update
+sudo apt install -y software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install -y python3.12 python3.12-venv python3.12-dev
+python3.12 --version
+/usr/bin/python3 --version
+```
+
+Se espera Python 3.12 en el primer comando y Python 3.10 en el segundo.
+
+Crea un entorno nuevo desde cero:
+
+```bash
+cd ~/apps/fastapi-backend/Api_Destinatarios
+python3.12 -m venv ~/apps/venvs/fastapi-backend-py312
+source ~/apps/venvs/fastapi-backend-py312/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python --version
+python -m pip check
+which python
+which uvicorn
+```
+
+Antes de cambiar systemd, valida imports, base de datos y un puerto temporal:
+
+```bash
+python -c "from app.main import app; print(app.title)"
+alembic current
+uvicorn app.main:app --host 127.0.0.1 --port 8001
+```
+
+En otra sesión SSH:
+
+```bash
+curl http://127.0.0.1:8001
+```
+
+Detén el Uvicorn temporal con `Ctrl+C`. No ejecutes migraciones si
+`alembic current` da error; revisa antes `DATABASE_URI`.
+
+Consulta el `ExecStart` actual:
+
+```bash
+sudo systemctl cat fastapi-backend
+```
+
+Crea un override conservando exactamente los argumentos actuales y cambiando
+solo la ruta de `uvicorn`:
+
+```bash
+sudo systemctl edit fastapi-backend
+```
+
+Contenido (ajusta los argumentos para que coincidan con el servicio actual):
+
+```ini
+[Service]
+ExecStart=
+ExecStart=/home/freido/apps/venvs/fastapi-backend-py312/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Aplica y valida:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start fastapi-backend
+sudo systemctl status fastapi-backend
+curl http://127.0.0.1:8000
+curl https://tools.feuh.com.mx
+journalctl -u fastapi-backend --since "5 minutes ago" --no-pager
+```
+
+NGINX y LiteSpeed no cambian: ambos siguen llegando a la API por el puerto
+8000.
+
+### Rollback del runtime
+
+Si el servicio nuevo no arranca:
+
+```bash
+sudo systemctl stop fastapi-backend
+sudo systemctl revert fastapi-backend
+sudo systemctl daemon-reload
+sudo systemctl start fastapi-backend
+sudo systemctl status fastapi-backend
+```
+
+`systemctl revert` elimina el override y recupera el `ExecStart` original.
+Conserva ambos entornos virtuales hasta terminar las pruebas de login y
+endpoints principales.
 
 ---
 
@@ -185,12 +300,12 @@ grep -E '^(ENV|DATABASE_URI|JWT_)' .env | sed 's/:.*@/:***@/'
 
 ```bash
 cd ~/apps/fastapi-backend/Api_Destinatarios
-source ~/apps/venvs/fastapi-backend/bin/activate
+source ~/apps/venvs/fastapi-backend-py312/bin/activate
 which python
 which pip
 ```
 
-Deben apuntar a `/home/freido/apps/venvs/fastapi-backend/bin/...`.
+Deben apuntar a `/home/freido/apps/venvs/fastapi-backend-py312/bin/...`.
 
 ```bash
 pip install -r requirements.txt
@@ -376,7 +491,7 @@ Si solo hay código/dependencias/migraciones nuevas:
 cd ~/apps/fastapi-backend/Api_Destinatarios
 sudo systemctl stop fastapi-backend
 git pull
-source ~/apps/venvs/fastapi-backend/bin/activate
+source ~/apps/venvs/fastapi-backend-py312/bin/activate
 pip install -r requirements.txt
 alembic upgrade head
 sudo systemctl start fastapi-backend
