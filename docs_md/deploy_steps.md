@@ -145,13 +145,15 @@ Si el servicio nuevo no arranca:
 
 ```bash
 sudo systemctl stop fastapi-backend
-sudo systemctl revert fastapi-backend
+sudo rm /etc/systemd/system/fastapi-backend.service.d/override.conf
+sudo rmdir --ignore-fail-on-non-empty /etc/systemd/system/fastapi-backend.service.d
 sudo systemctl daemon-reload
 sudo systemctl start fastapi-backend
 sudo systemctl status fastapi-backend
 ```
 
-`systemctl revert` elimina el override y recupera el `ExecStart` original.
+Al borrar solo `override.conf`, systemd recupera el `ExecStart` original sin
+modificar `/etc/systemd/system/fastapi-backend.service`.
 Conserva ambos entornos virtuales hasta terminar las pruebas de login y
 endpoints principales.
 
